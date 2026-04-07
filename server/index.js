@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const assembliesRouter = require('./routes/assemblies');
 
 const app = express();
@@ -17,6 +18,13 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/assemblies', assembliesRouter);
+
+// Serve React frontend in production
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(clientDist));
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(clientDist, 'index.html'));
+});
 
 // Generic error handler
 app.use((err, _req, res, _next) => {
