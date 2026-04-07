@@ -7,13 +7,15 @@ const router = express.Router();
 // Use a Set for allowed sort fields to validate user input
 const ALLOWED_SORT_MAP = {
   job_id:      'job_id',
-  part_number: 'partno',
+  partno:      'partno',
   updated_at:  'updated_at DESC',
+  part_number: 'partno', // keep for backward compatibility or different clients
 };
 
 // Build WHERE clause and bind params to a request
 function applyFilters(request, search, categories, jobIds, preferences, sdcStandards) {
-  let where = '1=1';
+  // Always filter out junk/temp SolidWorks files (~$ part numbers)
+  let where = "partno NOT LIKE '~$%'";
 
   if (search) {
     request.input('search', sql.NVarChar, `%${search}%`);
@@ -26,7 +28,6 @@ function applyFilters(request, search, categories, jobIds, preferences, sdcStand
   }
 
   if (categories && categories.length > 0) {
-    // We'll build the IN clause manually for simplicity with mssql driver
     const catList = categories.map((c, i) => {
       const name = `cat_${i}`;
       request.input(name, sql.NVarChar, c);
@@ -44,22 +45,34 @@ function applyFilters(request, search, categories, jobIds, preferences, sdcStand
     where += ` AND job_id IN (${jobList})`;
   }
 
+  // Handle preferences filter (treat NULL as 'No' if 'No' is selected)
   if (preferences && preferences.length > 0) {
     const prefList = preferences.map((p, i) => {
       const name = `pref_${i}`;
       request.input(name, sql.NVarChar, p);
       return `@${name}`;
     }).join(',');
-    where += ` AND preference IN (${prefList})`;
+    
+    if (preferences.includes('No')) {
+      where += ` AND (preference IN (${prefList}) OR preference IS NULL)`;
+    } else {
+      where += ` AND preference IN (${prefList})`;
+    }
   }
 
+  // Handle sdc_standards filter (treat NULL as 'No' if 'No' is selected)
   if (sdcStandards && sdcStandards.length > 0) {
     const sdcList = sdcStandards.map((s, i) => {
       const name = `sdc_${i}`;
       request.input(name, sql.NVarChar, s);
       return `@${name}`;
     }).join(',');
-    where += ` AND sdc_standard IN (${sdcList})`;
+
+    if (sdcStandards.includes('No')) {
+      where += ` AND (sdc_standard IN (${sdcList}) OR sdc_standard IS NULL)`;
+    } else {
+      where += ` AND sdc_standard IN (${sdcList})`;
+    }
   }
 
   return where;
