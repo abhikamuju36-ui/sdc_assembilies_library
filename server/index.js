@@ -1,0 +1,24 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const assembliesRouter = require('./routes/assemblies');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN || '*',
+}));
+app.use(express.json());
+
+app.use('/api/assemblies', assembliesRouter);
+
+// Generic error handler
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error', detail: err.message });
+});
+
+app.listen(PORT, () => {
+  console.log(`SDC Assemblies API listening on http://localhost:${PORT}`);
+});
