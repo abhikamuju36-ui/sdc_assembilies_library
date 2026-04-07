@@ -1,4 +1,4 @@
-const API_BASE = 'https://solidworksassemblieslibrary-atenaghyenffd2cv.canadacentral-01.azurewebsites.net';
+const API_BASE = 'https://sdc-assemblies-api.azurewebsites.net';
 
 export async function onRequest(context) {
   const url = new URL(context.request.url);
