@@ -1,14 +1,7 @@
 name: Deploy API to Azure App Service
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'server/**'
-      - 'package.json'
-      - 'package-lock.json'
+  workflow_dispatch: # disabled — deploying via Render instead
 
 jobs:
   deploy:
