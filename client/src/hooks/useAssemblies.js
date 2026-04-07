@@ -38,13 +38,17 @@ export default function useAssemblies({ search, categories, jobIds, preferences,
         throw new Error(body.error || `HTTP ${res.status}`);
       }
       const json = await res.json();
+      
+      // Robustly identify the data array and total count
+      const results = json.data || json.value || [];
+      const count   = json.total ?? json.totalRecords ?? 0;
 
       if (page === 1) {
-        setData(json.data);
+        setData(Array.isArray(results) ? results : []);
       } else {
-        setData(prev => [...prev, ...json.data]);
+        setData(prev => [...prev, ...(Array.isArray(results) ? results : [])]);
       }
-      setTotal(json.total);
+      setTotal(count);
     } catch (err) {
       if (err.name !== 'AbortError') setError(err.message);
     } finally {
