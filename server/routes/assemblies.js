@@ -18,14 +18,21 @@ function applyFilters(request, search, categories, jobIds, preferences, sdcStand
   let where = "partno NOT LIKE '~$%'";
 
   if (search) {
-    request.input('search', sql.NVarChar, `%${search}%`);
-    where += ` AND (
-      job_id LIKE @search OR
-      job_name LIKE @search OR
-      partno LIKE @search OR
-      file_name LIKE @search OR
-      description LIKE @search
-    )`;
+    // Split on whitespace so "laser marking" requires BOTH words to appear (AND logic).
+    // Each token is matched across all text fields — including comments.
+    const tokens = search.trim().split(/\s+/).filter(Boolean);
+    tokens.forEach((token, idx) => {
+      const p = `search_${idx}`;
+      request.input(p, sql.NVarChar, `%${token}%`);
+      where += ` AND (
+        job_id      LIKE @${p} OR
+        job_name    LIKE @${p} OR
+        partno      LIKE @${p} OR
+        file_name   LIKE @${p} OR
+        description LIKE @${p} OR
+        comments    LIKE @${p}
+      )`;
+    });
   }
 
   if (categories && categories.length > 0) {

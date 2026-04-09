@@ -273,17 +273,24 @@ namespace SwDmApp
                     await bulkCopy.WriteToServerAsync(table);
                 }
 
-                // 3. Insert into main table where the combination (job_id, file_name, partno) doesn't exist
+                // 3. MERGE upsert:
+                //    - MATCHED + scanner got a real description  → update job_name + description
+                //    - MATCHED + scanner got empty description   → leave row untouched (file was locked)
+                //    - NOT MATCHED                               → insert new row
+                //    Web-app-only fields (comments, preference, sdc_standard, etc.) are never overwritten.
                 string mergeSql = $@"
-                    INSERT INTO [{SQL_TABLE}] (job_id, job_name, file_name, partno, description)
-                    SELECT t.job_id, t.job_name, t.file_name, t.partno, t.description
-                    FROM {tempTableName} t
-                    WHERE NOT EXISTS (
-                        SELECT 1 FROM [{SQL_TABLE}] m 
-                        WHERE m.job_id = t.job_id 
-                          AND m.file_name = t.file_name 
-                          AND m.partno = t.partno
-                    );
+                    MERGE [{SQL_TABLE}] AS target
+                    USING {tempTableName} AS source
+                       ON (    target.job_id   = source.job_id
+                           AND target.file_name = source.file_name
+                           AND target.partno    = source.partno)
+                    WHEN MATCHED AND source.description IS NOT NULL AND source.description <> '' THEN
+                        UPDATE SET
+                            target.job_name    = source.job_name,
+                            target.description = source.description
+                    WHEN NOT MATCHED BY TARGET THEN
+                        INSERT (job_id, job_name, file_name, partno, description)
+                        VALUES (source.job_id, source.job_name, source.file_name, source.partno, source.description);
                     SELECT @@ROWCOUNT;";
 
                 await using (var cmd = new SqlCommand(mergeSql, conn)) {
@@ -357,7 +364,8 @@ namespace SwDmApp
                     }
 
                     // 3. Description Property Validation
-                    string description = GetSafeProperty(doc, "DESCRIPTION", out _, out _);
+                    string rawDescription = GetSafeProperty(doc, "DESCRIPTION", out _, out _);
+                    string description = EvaluateProperty(rawDescription, fileNameOnly);
                     data["DESCRIPTION"] = description;
 
                     if (string.IsNullOrWhiteSpace(description))
@@ -391,7 +399,16 @@ namespace SwDmApp
                 }
                 else
                 {
-                    result.Errors.Add($"Could not open SW file: {err}");
+                    string errReason = err switch {
+                        SwDmDocumentOpenError.swDmDocumentOpenErrorFileNotFound     => "File not found",
+                        SwDmDocumentOpenError.swDmDocumentOpenErrorNonSW            => "Not a SolidWorks file",
+                        SwDmDocumentOpenError.swDmDocumentOpenErrorFutureVersion    => "File is a newer SW version",
+                        SwDmDocumentOpenError.swDmDocumentOpenErrorNeedsRepair      => "File needs repair",
+                        _ => err.ToString()
+                    };
+                    // E_FAIL / swDmDocumentOpenErrorUnknown most often means the file is open/locked in SolidWorks
+                    Console.WriteLine($"  [WARN] Cannot read '{Path.GetFileName(filePath)}' — {errReason} (description will stay NULL until next scan when file is closed)");
+                    result.Errors.Add($"Could not open SW file: {errReason}");
                     if (doc != null) doc.CloseDoc();
                 }
             }

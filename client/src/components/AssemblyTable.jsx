@@ -1,4 +1,38 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+
+/**
+ * Wraps all matching search tokens in a highlighted <mark> span.
+ * - Case-insensitive
+ * - Multi-word: each space-separated token is highlighted independently
+ */
+function Highlight({ text, search }) {
+  const content = useMemo(() => {
+    if (!text || !search?.trim()) return text || null;
+
+    const tokens = search.trim().split(/\s+/).filter(Boolean);
+    if (!tokens.length) return text;
+
+    const escaped  = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const splitRx  = new RegExp(`(${escaped.join('|')})`, 'gi');
+    const matchRx  = new RegExp(`^(${escaped.join('|')})$`, 'i');
+    const parts    = text.split(splitRx);
+
+    return parts.map((part, i) =>
+      part && matchRx.test(part) ? (
+        <mark
+          key={i}
+          className="bg-[var(--accent)]/20 text-[var(--accent)] rounded-sm px-0.5 font-bold not-italic"
+        >
+          {part}
+        </mark>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    );
+  }, [text, search]);
+
+  return <>{content}</>;
+}
 
 const CATEGORY_STYLES = {
   Structural:  'bg-brand-green/20 text-brand-green dark:bg-brand-green/40 dark:text-brand-lime',
@@ -147,7 +181,7 @@ function ColumnPicker({ visibleCols, onChange }) {
   );
 }
 
-export default function AssemblyTable({ assemblies, onEdit, selectedPartnos = new Set(), onToggle }) {
+export default function AssemblyTable({ assemblies, onEdit, selectedPartnos = new Set(), onToggle, search = '' }) {
   const [visibleCols, setVisibleCols] = useState(loadVisibleCols);
 
   function handleColChange(next) {
@@ -230,7 +264,7 @@ export default function AssemblyTable({ assemblies, onEdit, selectedPartnos = ne
                     onClick={() => onEdit(a)}
                     className="font-mono-eng text-xs text-[var(--accent)] font-bold hover:underline text-left transition-all"
                   >
-                    {a.partno}
+                    <Highlight text={a.partno} search={search} />
                   </button>
                 </td>
 
@@ -242,7 +276,7 @@ export default function AssemblyTable({ assemblies, onEdit, selectedPartnos = ne
                         ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40'
                         : 'text-[var(--text-secondary)]'
                     }`} title={a.file_name !== a.partno ? 'File name differs from part number' : ''}>
-                      {a.file_name}
+                      <Highlight text={a.file_name} search={search} />
                     </span>
                   ) : (
                     <span className="text-[var(--text-secondary)] opacity-25 text-xs">—</span>
@@ -251,17 +285,21 @@ export default function AssemblyTable({ assemblies, onEdit, selectedPartnos = ne
 
                 {/* Job ID — always */}
                 <td className="px-6 py-4 font-mono-eng text-xs text-[var(--text-secondary)] whitespace-nowrap">
-                  {a.job_id}
+                  <Highlight text={a.job_id} search={search} />
                 </td>
 
                 {/* Job Name — always */}
                 <td className="px-6 py-4 text-xs text-[var(--text-secondary)] whitespace-nowrap max-w-[180px] truncate">
-                  {a.job_name || '—'}
+                  {a.job_name
+                    ? <Highlight text={a.job_name} search={search} />
+                    : '—'}
                 </td>
 
                 {/* Description — always */}
                 <td className="px-6 py-4 text-[var(--text-primary)] font-medium max-w-sm truncate group-hover:text-[var(--accent)] transition-colors">
-                  {a.description || '—'}
+                  {a.description
+                    ? <Highlight text={a.description} search={search} />
+                    : '—'}
                 </td>
 
                 {/* Category — toggleable */}

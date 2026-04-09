@@ -53,6 +53,27 @@ export default function App() {
   }, [page, _refetch]);
 
   const loadMoreRef = useRef(null);
+  const searchRef   = useRef(null);
+
+  // Press "/" from anywhere (when not already in an input) to focus search
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key !== '/') return;
+      const active = document.activeElement;
+      const inInput = active && (
+        active.tagName === 'INPUT' ||
+        active.tagName === 'TEXTAREA' ||
+        active.isContentEditable
+      );
+      if (!inInput) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   // Infinite Scroll Observer
   useEffect(() => {
@@ -225,16 +246,36 @@ export default function App() {
           </button>
 
           <div className="flex-1 max-w-2xl relative group">
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-[var(--accent)] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-[var(--accent)] transition-colors pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
+              ref={searchRef}
               type="text"
-              placeholder="Search by part number, job, or description..."
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all font-mono-eng font-medium"
+              placeholder="Search part no, job, description, comments… (press / to focus)"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-10 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all font-mono-eng font-medium"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); e.currentTarget.blur(); } }}
             />
+            {/* Clear button — only shown when there is text */}
+            {search && (
+              <button
+                onClick={() => { setSearch(''); searchRef.current?.focus(); }}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors p-0.5 rounded"
+                title="Clear search (Esc)"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+            {/* "/" hint badge — only shown when search box is empty */}
+            {!search && (
+              <kbd className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white/20 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 pointer-events-none group-focus-within:opacity-0 transition-opacity">
+                /
+              </kbd>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -349,7 +390,7 @@ export default function App() {
               </div>
             ) : (
               <div className="sdc-card">
-                <AssemblyTable assemblies={data} onEdit={setSelectedAssembly} selectedPartnos={selectedPartnos} onToggle={handleToggleSelect} />
+                <AssemblyTable assemblies={data} onEdit={setSelectedAssembly} selectedPartnos={selectedPartnos} onToggle={handleToggleSelect} search={search} />
               </div>
             )}
 
