@@ -32,3 +32,17 @@ Thumbs.db
 netstat.txt
 tmp/
 .claude/
+
+# C# build output (all projects)
+**/bin/
+**/obj/
+**/*.user
+
+# SolidWorks scanner — generated data files and scratch
+Solidworks_Azure/Solidworks_Assemblies_CSV_Output/
+Solidworks_Azure/scratch/
+Solidworks_Azure/build.log
+
+# Temporary / unrelated directories
+tmp_schema/
+other_projects/

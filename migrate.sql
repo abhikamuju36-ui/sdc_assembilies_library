@@ -4,7 +4,6 @@
 ALTER TABLE solidworks_assemblies ADD
   category     NVARCHAR(50)  NULL,
   comments     NVARCHAR(MAX) NULL,
-  status       NVARCHAR(20)  NULL,
   updated_by   NVARCHAR(100) NULL,
   updated_at   DATETIME      NULL;
 
@@ -14,3 +13,7 @@ ALTER TABLE solidworks_assemblies ADD
 
 -- Clear unintended default values so blank rows show as null (run once)
 UPDATE solidworks_assemblies SET sdc_standard = NULL WHERE sdc_standard = 'No';
+
+-- -------------------------------------------------------------------------
+-- End of migration script.
+-- -------------------------------------------------------------------------

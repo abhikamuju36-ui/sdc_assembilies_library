@@ -52,10 +52,11 @@ export default function AssemblyModal({ assembly, onClose, onSave, onDelete }) {
   }, [assembly]);
 
   useEffect(() => {
+    if (!assembly) return;
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
+  }, [assembly, onClose]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -118,6 +119,28 @@ export default function AssemblyModal({ assembly, onClose, onSave, onDelete }) {
                 {assembly.job_id} {assembly.job_name ? `— ${assembly.job_name}` : ''}
               </div>
             </Field>
+
+            {/* File Name — always shown; highlighted when different from partno */}
+            <div className="md:col-span-2">
+              <Field label="File Name">
+                <div className={`font-mono-eng text-sm font-bold px-4 py-2 rounded-2xl border flex items-center gap-3 ${
+                  assembly.file_name && assembly.file_name !== assembly.partno
+                    ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-900/20 dark:border-amber-600/40 dark:text-amber-400'
+                    : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-secondary)] opacity-60'
+                }`}>
+                  <svg className="w-4 h-4 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span>{assembly.file_name || '—'}</span>
+                  {assembly.file_name && assembly.file_name !== assembly.partno && (
+                    <span className="ml-auto text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-amber-200/60 dark:bg-amber-700/30">
+                      differs from part no.
+                    </span>
+                  )}
+                </div>
+              </Field>
+            </div>
+
             <div className="md:col-span-2">
               <Field label="Description">
                 <textarea
@@ -199,7 +222,7 @@ export default function AssemblyModal({ assembly, onClose, onSave, onDelete }) {
                   {['Yes', 'No'].map((opt) => (
                     <button
                       key={opt}
-                      onClick={() => setPreference(opt)}
+                      onClick={() => setPreference(preference === opt ? '' : opt)}
                       className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${preference === opt ? 'bg-[var(--bg-card)] text-[var(--accent)] shadow-md border border-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)] border border-transparent'}`}
                     >
                       {opt}
@@ -212,7 +235,7 @@ export default function AssemblyModal({ assembly, onClose, onSave, onDelete }) {
                   {['Yes', 'No'].map((opt) => (
                     <button
                       key={opt}
-                      onClick={() => setSdcStandard(opt)}
+                      onClick={() => setSdcStandard(sdcStandard === opt ? '' : opt)}
                       className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${sdcStandard === opt ? 'bg-[var(--bg-card)] text-[var(--accent)] shadow-md border border-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)] border border-transparent'}`}
                     >
                       {opt}
@@ -257,61 +280,76 @@ export default function AssemblyModal({ assembly, onClose, onSave, onDelete }) {
         </div>
 
         {/* Footer */}
-        <div className="px-10 py-8 border-t border-[var(--border-color)] bg-[var(--bg-main)] flex items-center justify-between">
-          <div className="hidden sm:block">
+        <div className="px-6 sm:px-10 py-6 border-t border-[var(--border-color)] bg-[var(--bg-main)] flex flex-col gap-4">
+          {/* Timestamps */}
+          <div className="hidden sm:flex gap-4">
+            {assembly.created_at && (
+              <p className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest opacity-40">
+                Created: {new Date(assembly.created_at).toLocaleDateString()}
+              </p>
+            )}
             {assembly.updated_at && (
               <p className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest opacity-40">
-                Synchronized: {new Date(assembly.updated_at).toLocaleDateString()}
+                Updated: {new Date(assembly.updated_at).toLocaleDateString()}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-4">
+          {/* Actions — wrap on small screens */}
+          <div className="flex flex-wrap items-center gap-3">
             {!showConfirmDelete ? (
               <button
                 onClick={() => setShowConfirmDelete(true)}
-                className="sdc-btn-outline px-6 text-red-500 border-red-500 hover:bg-red-500/10"
+                className="sdc-btn-outline px-5 text-red-500 border-red-500 hover:bg-red-500/10 text-xs"
               >
                 Delete Record
               </button>
             ) : (
-              <div className="flex items-center gap-2 animate-in slide-in-from-left-1 duration-200">
+              <div className="flex flex-wrap items-center gap-2 animate-in slide-in-from-left-1 duration-200">
                 <input
                   type="password"
                   placeholder="Enter Password"
-                  className="bg-[var(--bg-main)] border border-red-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50 w-40"
+                  className="bg-[var(--bg-main)] border border-red-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50 w-36"
                   value={deletePassword}
                   onChange={(e) => setDeletePassword(e.target.value)}
                   autoFocus
                 />
                 <button
                   onClick={() => onDelete(assembly.partno, deletePassword)}
-                  className="sdc-btn-primary px-4 bg-red-600 hover:bg-red-700 border-red-600 font-bold"
+                  className="sdc-btn-primary px-4 bg-red-600 hover:bg-red-700 border-red-600 font-bold text-xs"
                   disabled={!deletePassword}
                 >
-                  Confirm Delete?
+                  Confirm Delete
+                </button>
+                <button
+                  onClick={() => { setShowConfirmDelete(false); setDeletePassword(''); }}
+                  className="sdc-btn-outline px-3 text-xs"
+                >
+                  Cancel
                 </button>
               </div>
             )}
-            <button onClick={() => { onClose(); setShowConfirmDelete(false); }} className="sdc-btn-outline px-8">
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="sdc-btn-primary px-10 relative overflow-hidden"
-            >
-              {saving ? (
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  <span>Syncing...</span>
-                </div>
-              ) : (
-                'Save Changes'
-              )}
-            </button>
+            <div className="flex items-center gap-3 ml-auto">
+              <button onClick={() => { onClose(); setShowConfirmDelete(false); }} className="sdc-btn-outline px-6 text-sm">
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="sdc-btn-primary px-8 text-sm"
+              >
+                {saving ? (
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    <span>Syncing...</span>
+                  </div>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

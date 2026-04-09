@@ -23,6 +23,7 @@ function applyFilters(request, search, categories, jobIds, preferences, sdcStand
       job_id LIKE @search OR
       job_name LIKE @search OR
       partno LIKE @search OR
+      file_name LIKE @search OR
       description LIKE @search
     )`;
   }
@@ -148,8 +149,8 @@ router.get('/', async (req, res) => {
 
     const dataResult = await dataReq.query(`
       SELECT
-        id, job_id, job_name, partno, description,
-        category, comments, updated_by, updated_at,
+        id, job_id, job_name, file_name, partno, description,
+        category, comments, updated_by, updated_at, created_at,
         model_link, picture_link, preference, sdc_standard
       FROM solidworks_assemblies
       WHERE ${where}
@@ -197,6 +198,7 @@ router.post('/', async (req, res) => {
 
     const request = pool.request();
     request.input('partno',       sql.NVarChar, partno.trim());
+    request.input('file_name',    sql.NVarChar, partno.trim()); // mirrors partno for manual entries
     request.input('job_id',       sql.NVarChar, job_id       || null);
     request.input('job_name',     sql.NVarChar, job_name     || null);
     request.input('description',  sql.NVarChar, description  || null);
@@ -210,16 +212,16 @@ router.post('/', async (req, res) => {
 
     await request.query(`
       INSERT INTO solidworks_assemblies
-        (partno, job_id, job_name, description, category, comments,
+        (partno, file_name, job_id, job_name, description, category, comments,
          updated_by, model_link, picture_link, preference, sdc_standard, updated_at)
       VALUES
-        (@partno, @job_id, @job_name, @description, @category, @comments,
+        (@partno, @file_name, @job_id, @job_name, @description, @category, @comments,
          @updated_by, @model_link, @picture_link, @preference, @sdc_standard, GETDATE())
     `);
 
     const created = await pool.request()
       .input('pno', sql.NVarChar, partno.trim())
-      .query('SELECT id, job_id, job_name, partno, description, category, comments, updated_by, updated_at, model_link, picture_link, preference, sdc_standard FROM solidworks_assemblies WHERE partno = @pno');
+      .query('SELECT id, job_id, job_name, file_name, partno, description, category, comments, updated_by, updated_at, created_at, model_link, picture_link, preference, sdc_standard FROM solidworks_assemblies WHERE partno = @pno');
 
     res.status(201).json({ success: true, assembly: created.recordset[0] });
   } catch (err) {

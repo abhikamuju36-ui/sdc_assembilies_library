@@ -14,7 +14,7 @@ export default function useAssemblies({ search, categories, jobIds, preferences,
     return () => clearTimeout(t);
   }, [search]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (overridePage = null) => {
     // Cancel previous in-flight request
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
@@ -23,36 +23,55 @@ export default function useAssemblies({ search, categories, jobIds, preferences,
     setLoading(true);
     setError(null);
 
+    const activePage = overridePage ?? page;
+
     try {
-      const params = new URLSearchParams({ sortBy, page, limit });
-      if (debouncedSearch)             params.set('search', debouncedSearch);
-      if (categories && categories.length) params.set('categories', categories.join(','));
-      if (jobIds && jobIds.length)         params.set('jobIds', jobIds.join(','));
-      if (preferences && preferences.length)   params.set('preferences',   preferences.join(','));
-      if (sdcStandards && sdcStandards.length) params.set('sdcStandards', sdcStandards.join(','));
+      const params = new URLSearchParams({ sortBy, page: activePage, limit });
+      if (debouncedSearch)                       params.set('search',       debouncedSearch);
+      if (categories   && categories.length)     params.set('categories',   categories.join(','));
+      if (jobIds       && jobIds.length)         params.set('jobIds',       jobIds.join(','));
+      if (preferences  && preferences.length)    params.set('preferences',  preferences.join(','));
+      if (sdcStandards && sdcStandards.length)   params.set('sdcStandards', sdcStandards.join(','));
 
       const base = import.meta.env.VITE_API_URL ?? '';
       const res = await fetch(`${base}/api/assemblies?${params.toString()}`, { signal: controller.signal });
+
       if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || `HTTP ${res.status}`);
+        // Safely parse error body — server may return HTML on crash
+        let message = `Server error (${res.status})`;
+        try {
+          const body = await res.json();
+          message = body.error || body.detail || message;
+        } catch {}
+        throw new Error(message);
       }
+
       const json = await res.json();
-      
-      // Robustly identify the data array and total count
       const results = json.data || json.value || [];
       const count   = json.total ?? json.totalRecords ?? 0;
 
-      if (page === 1) {
+      if (activePage === 1) {
         setData(Array.isArray(results) ? results : []);
       } else {
-        setData(prev => [...prev, ...(Array.isArray(results) ? results : [])]);
+        setData(prev => {
+          const seen = new Set(prev.map(r => r.partno));
+          const fresh = (Array.isArray(results) ? results : []).filter(r => !seen.has(r.partno));
+          return [...prev, ...fresh];
+        });
       }
       setTotal(count);
     } catch (err) {
-      if (err.name !== 'AbortError') setError(err.message);
+      if (err.name === 'AbortError') return; // silently ignore aborted requests
+      // Friendly message for network failure
+      const msg = err.message.includes('Failed to fetch') || err.message.includes('NetworkError')
+        ? 'Cannot reach server — check your connection'
+        : err.message;
+      setError(msg);
     } finally {
-      setLoading(false);
+      // Only clear loading if this request was NOT aborted
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [debouncedSearch, categories, jobIds, preferences, sdcStandards, sortBy, page, limit]);
 
@@ -62,5 +81,8 @@ export default function useAssemblies({ search, categories, jobIds, preferences,
 
   const hasMore = data.length < total;
 
-  return { data, total, loading, error, hasMore, refetch: fetchData };
+  // Always reloads from page 1 — use after add/save/delete
+  const refetch = useCallback(() => fetchData(1), [fetchData]);
+
+  return { data, total, loading, error, hasMore, refetch };
 }

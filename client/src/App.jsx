@@ -31,7 +31,7 @@ export default function App() {
   const [categories, setCategories] = useState([]);
   const [jobs, setJobs]             = useState([]);
 
-  const { data, total, loading, error, hasMore, refetch } = useAssemblies({
+  const { data, total, loading, error, hasMore, refetch: _refetch } = useAssemblies({
     search,
     categories: selectedCategories,
     jobIds: selectedJobIds,
@@ -41,6 +41,16 @@ export default function App() {
     page,
     limit: LIMIT,
   });
+
+  // After any mutation, reset to page 1 so infinite scroll restarts cleanly.
+  // If already on page 1, page state won't change so force a direct refetch.
+  const refetch = useCallback(() => {
+    if (page === 1) {
+      _refetch();
+    } else {
+      setPage(1); // triggers fetchData via useEffect in the hook
+    }
+  }, [page, _refetch]);
 
   const loadMoreRef = useRef(null);
 
@@ -208,19 +218,9 @@ export default function App() {
             onClick={handleHomeReset}
             className="flex items-center gap-4 hover:opacity-90 transition-all active:scale-95 shrink-0 group py-1"
           >
-            <div className="flex flex-col items-center">
-              <div className="relative mb-1">
-                {/* Oval SDC Logo */}
-                <div className="bg-white rounded-full px-5 py-1 shadow-sm border border-brand-navy/10 flex items-center justify-center">
-                  <span className="text-brand-navy font-black text-2xl tracking-tighter" style={{ fontFamily: 'Montserrat, sans-serif' }}>SDC</span>
-                </div>
-              </div>
-              <div className="text-center">
-                <h1 className="text-[9px] font-black tracking-[0.25em] uppercase text-white/90 leading-none whitespace-nowrap" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                  Steven Douglas Corp.
-                </h1>
-                <p className="text-[7px] font-bold text-brand-yellow/60 tracking-[0.4em] uppercase mt-1 leading-none">Assemblies Library</p>
-              </div>
+            <div className="flex flex-col items-center gap-1">
+              <img src="/sdc-logo.png" alt="SDC Logo" className="h-10 w-auto object-contain" />
+              <p className="text-[7px] font-bold text-brand-yellow/60 tracking-[0.4em] uppercase leading-none">Assemblies Library</p>
             </div>
           </button>
 

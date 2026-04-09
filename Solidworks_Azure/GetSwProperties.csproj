@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <RootNamespace>SwDmApp</RootNamespace>
+    <AssemblyName>SwDmAssemblyExtractor_AzureSQL</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Azure SQL / SQL Server client — handles SqlConnection, SqlBulkCopy, etc. -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Exclude list_tables.cs — it belongs to list_tables.csproj, not this project -->
+    <Compile Remove="list_tables.cs" />
+  </ItemGroup>
+
+  <!--
+    SolidWorks Document Manager Interop DLL.
+    Copy swdocumentmgr.dll from your SolidWorks install into the project folder:
+      C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\swdocumentmgr.dll
+  -->
+  <ItemGroup>
+    <Reference Include="SolidWorks.Interop.swdocumentmgr">
+      <HintPath>.\SolidWorks.Interop.swdocumentmgr.dll</HintPath>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

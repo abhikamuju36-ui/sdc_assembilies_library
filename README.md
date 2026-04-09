@@ -1,6 +1,6 @@
 # SDC Assemblies Library
 
-A full-stack web application designed for **Steven Douglas Corp.** to manage and search SolidWorks assembly records. This tool provides a modern, high-performance interface for engineers to track categories, statuses, preferences, and SDC standards.
+A full-stack web application designed for **Steven Douglas Corp.** to manage and search SolidWorks assembly records. This tool provides a modern, high-performance interface for engineers to track categories, preferences, and SDC standards.
 
 ## 🚀 Features
 - **Fast Search**: Search by part number, job, or description with instant results.

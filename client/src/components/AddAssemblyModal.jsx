@@ -48,10 +48,11 @@ export default function AddAssemblyModal({ open, onClose, onAdd }) {
   }, [open]);
 
   useEffect(() => {
+    if (!open) return;
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
+  }, [open, onClose]);
 
   const handleSubmit = useCallback(async () => {
     if (!partno.trim()) { setError('Part number is required.'); return; }
@@ -216,7 +217,7 @@ export default function AddAssemblyModal({ open, onClose, onAdd }) {
                   {['Yes', 'No'].map((opt) => (
                     <button
                       key={opt}
-                      onClick={() => setPreference(opt)}
+                      onClick={() => setPreference(preference === opt ? '' : opt)}
                       className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${preference === opt ? 'bg-[var(--bg-card)] text-[var(--accent)] shadow-md border border-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)] border border-transparent'}`}
                     >
                       {opt}
@@ -229,7 +230,7 @@ export default function AddAssemblyModal({ open, onClose, onAdd }) {
                   {['Yes', 'No'].map((opt) => (
                     <button
                       key={opt}
-                      onClick={() => setSdcStandard(opt)}
+                      onClick={() => setSdcStandard(sdcStandard === opt ? '' : opt)}
                       className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${sdcStandard === opt ? 'bg-[var(--bg-card)] text-[var(--accent)] shadow-md border border-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)] border border-transparent'}`}
                     >
                       {opt}

@@ -19,17 +19,20 @@ app.use((req, res, next) => {
 
 app.use('/api/assemblies', assembliesRouter);
 
+// Generic error handler — must be before static/catch-all so API errors return JSON
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error', detail: err.message });
+});
+
 // Serve React frontend in production
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(clientDist, 'index.html'));
-});
-
-// Generic error handler
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ error: 'Internal server error', detail: err.message });
+  const indexPath = path.join(clientDist, 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) res.status(404).json({ error: 'Not found' });
+  });
 });
 
 app.listen(PORT, () => {
